@@ -10,7 +10,6 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Khuehm1511\Shoppingcart\Contracts\Buyable;
 use Khuehm1511\Shoppingcart\Exceptions\UnknownModelException;
 use Khuehm1511\Shoppingcart\Exceptions\InvalidRowIDException;
-use Khuehm1511\Shoppingcart\Exceptions\CartAlreadyStoredException;
 use Khuehm1511\Shoppingcart\Coupons\Coupon;
 use Khuehm1511\Shoppingcart\Repositories\RepositoryInterface;
 
