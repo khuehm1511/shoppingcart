@@ -16,6 +16,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shopping cart repository settings
+    |--------------------------------------------------------------------------
+    |
+    | Here you can set which repository to use. Available repositories:
+    | database and redis.
+    |
+    */
+    'repository' => \Khuehm1511\Shoppingcart\Repositories\DatabaseRepository::class,
+    // 'repository' => \Khuehm1511\Shoppingcart\Repositories\RedisRepository::class,
+
+	/*
+    |--------------------------------------------------------------------------
     | Shoppingcart database settings
     |--------------------------------------------------------------------------
     |
@@ -28,7 +40,10 @@ return [
 
         'connection' => null,
 
-        'table' => 'shoppingcart',
+        'table' => [
+			'cart' => 'carts',
+			'coupon' => 'coupons'
+		]
 
     ],
 
@@ -63,5 +78,15 @@ return [
         'thousand_seperator' => ','
 
     ],
+	
+	/*
+	|--------------------------------------------------------------------------
+	| Default currency
+	|--------------------------------------------------------------------------
+	*/
+	'currency' => [
+		'unit' => 'USD',
+		'pos' => 'left', // Select one of the following locations: left, left_space, right, right_space
+	]
 
 ];

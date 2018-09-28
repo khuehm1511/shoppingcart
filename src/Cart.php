@@ -11,6 +11,8 @@ use Khuehm1511\Shoppingcart\Contracts\Buyable;
 use Khuehm1511\Shoppingcart\Exceptions\UnknownModelException;
 use Khuehm1511\Shoppingcart\Exceptions\InvalidRowIDException;
 use Khuehm1511\Shoppingcart\Exceptions\CartAlreadyStoredException;
+use Khuehm1511\Shoppingcart\Coupons\Coupon;
+use Khuehm1511\Shoppingcart\Repositories\RepositoryInterface;
 
 class Cart
 {
@@ -38,16 +40,30 @@ class Cart
     private $instance;
 
     /**
+     * Repository for cart store.
+     *
+     * @var RepositoryInterface
+     */
+    private $repo;
+    
+	/**
+     * Coupons.
+     *
+     * @var Collection
+     */
+    private $coupons;
+	
+	/**
      * Cart constructor.
      *
      * @param \Illuminate\Session\SessionManager      $session
      * @param \Illuminate\Contracts\Events\Dispatcher $events
      */
-    public function __construct(SessionManager $session, Dispatcher $events)
+    public function __construct(RepositoryInterface $repo, SessionManager $session, Dispatcher $events)
     {
+		$this->repo = $repo;
         $this->session = $session;
         $this->events = $events;
-
         $this->instance(self::DEFAULT_INSTANCE);
     }
 
@@ -284,6 +300,82 @@ class Cart
     }
 
     /**
+     * Get total price with coupons.
+     *
+     * @return float
+     */
+    public function totalWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    {
+        $total = $this->subtotal();
+        $totalWithCoupons = $total;
+        $coupon = $this->coupons();
+        $totalWithCoupons -= $coupon->apply($total);
+		return $this->numberFormat($totalWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
+    }
+	
+    /**
+     * Get discount price with coupons.
+     *
+     * @return float
+     */
+    public function discountWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    {
+        $total = $this->subtotal();
+        $discountWithCoupons = 0;
+		if ($this->hasCoupon())
+		{
+			$coupon = $this->coupons();
+			$discountWithCoupons = $coupon->apply($total);
+		}
+		return $this->numberFormat($discountWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
+    }
+	
+    /**
+     * Add coupon.
+     *
+     * @param Coupon $coupon
+     */
+    public function addCoupon(Coupon $coupon)
+    {
+        return $this->session->put('coupon', $coupon);
+    }
+    /**
+     * Remove coupon.
+     *
+     * @param Coupon $coupon
+     */
+    public function removeCoupon()
+    {
+        $this->session->remove('coupon');
+    }
+    /**
+     * Get coupons.
+     *
+     * @return Collection
+     */
+    public function coupons()
+    {
+        if (is_null($this->session->get('coupon'))) {
+            return new Collection([]);
+        }
+
+        return $this->session->get('coupon');
+    }
+	
+	/**
+	 * Has coupons.
+	 *
+	 * @return true/false
+	 */
+	public function hasCoupon()
+	{
+		if (is_null($this->session->get('coupon'))) {
+			return false;
+		}
+		return true;
+	}
+	
+	/**
      * Search the cart content for a cart item matching the given search closure.
      *
      * @param \Closure $search
@@ -348,17 +440,14 @@ class Cart
      */
     public function store($identifier)
     {
-        $content = $this->getContent();
-
-        if ($this->storedCartWithIdentifierExists($identifier)) {
-            throw new CartAlreadyStoredException("A cart with identifier {$identifier} was already stored.");
-        }
-
-        $this->getConnection()->table($this->getTableName())->insert([
-            'identifier' => $identifier,
-            'instance' => $this->currentInstance(),
-            'content' => serialize($content)
-        ]);
+        $this->repo->createOrUpdate(
+			$identifier,
+			$this->currentInstance(),
+			serialize([
+				'content' => $this->getContent(),
+				'coupon' => $this->coupons()
+			])
+		);
 
         $this->events->fire('cart.stored');
     }
@@ -371,13 +460,10 @@ class Cart
      */
     public function restore($identifier)
     {
-        if( ! $this->storedCartWithIdentifierExists($identifier)) {
+        $stored = $this->repo->findByIdentifier($identifier);
+        if ($stored === null) {
             return;
         }
-
-        $stored = $this->getConnection()->table($this->getTableName())
-            ->where('identifier', $identifier)->first();
-
         $storedContent = unserialize($stored->content);
 
         $currentInstance = $this->currentInstance();
@@ -386,18 +472,18 @@ class Cart
 
         $content = $this->getContent();
 
-        foreach ($storedContent as $cartItem) {
+        foreach ($storedContent['content'] as $cartItem) {
             $content->put($cartItem->rowId, $cartItem);
         }
 
         $this->events->fire('cart.restored');
 
         $this->session->put($this->instance, $content);
+        $this->session->put('coupon', $storedContent['coupon']);
 
         $this->instance($currentInstance);
-
-        $this->getConnection()->table($this->getTableName())
-            ->where('identifier', $identifier)->delete();
+		
+		$this->repo->remove($identifier);
     }
 
     /**
@@ -477,49 +563,6 @@ class Cart
         if ( ! is_array($item)) return false;
 
         return is_array(head($item)) || head($item) instanceof Buyable;
-    }
-
-    /**
-     * @param $identifier
-     * @return bool
-     */
-    private function storedCartWithIdentifierExists($identifier)
-    {
-        return $this->getConnection()->table($this->getTableName())->where('identifier', $identifier)->exists();
-    }
-
-    /**
-     * Get the database connection.
-     *
-     * @return \Illuminate\Database\Connection
-     */
-    private function getConnection()
-    {
-        $connectionName = $this->getConnectionName();
-
-        return app(DatabaseManager::class)->connection($connectionName);
-    }
-
-    /**
-     * Get the database table name.
-     *
-     * @return string
-     */
-    private function getTableName()
-    {
-        return config('cart.database.table', 'shoppingcart');
-    }
-
-    /**
-     * Get the database connection name.
-     *
-     * @return string
-     */
-    private function getConnectionName()
-    {
-        $connection = config('cart.database.connection');
-
-        return is_null($connection) ? config('database.default') : $connection;
     }
 
     /**

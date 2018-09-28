@@ -16,7 +16,7 @@ class ShoppingcartServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind('cart', 'Khuehm1511\Shoppingcart\Cart');
+        //$this->app->bind('cart', 'Khuehm1511\Shoppingcart\Cart');
 
         $config = __DIR__ . '/../config/cart.php';
         $this->mergeConfigFrom($config, 'cart');
@@ -27,6 +27,16 @@ class ShoppingcartServiceProvider extends ServiceProvider
             if ($this->app['config']->get('cart.destroy_on_logout')) {
                 $this->app->make(SessionManager::class)->forget('cart');
             }
+        });
+		
+		$this->app->bind('cart', function () {
+            return new Cart(
+                $this->app->make(
+                    $this->app['config']->get('cart.repository')
+                ),
+				$this->app->make(SessionManager::class),
+				$this->app->make(\Illuminate\Contracts\Events\Dispatcher::class)
+            );
         });
 
         if ( ! class_exists('CreateShoppingcartTable')) {

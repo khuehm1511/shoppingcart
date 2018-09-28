@@ -11,7 +11,7 @@ class CreateShoppingcartTable extends Migration
      */
     public function up()
     {
-        Schema::create(config('cart.database.table'), function (Blueprint $table) {
+        Schema::create(config('cart.database.table.cart'), function (Blueprint $table) {
             $table->string('identifier');
             $table->string('instance');
             $table->longText('content');
@@ -19,12 +19,26 @@ class CreateShoppingcartTable extends Migration
 
             $table->primary(['identifier', 'instance']);
         });
+		
+		Schema::create(config('cart.database.table.coupon'), function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('code');
+            $table->enum('type', ['fixed', 'percentage'])->default('fixed');
+            $table->integer('uses')->nullable();
+            $table->decimal('min_cart_total')->nullable();
+            $table->decimal('max_discount_value')->nullable();
+            $table->string('value');
+            $table->dateTime('start')->nullable();
+            $table->dateTime('expiry')->nullable();
+            $table->timestamps();
+        });
     }
     /**
      * Reverse the migrations.
      */
     public function down()
     {
-        Schema::drop(config('cart.database.table'));
+        Schema::drop(config('cart.database.table.cart'));
+        Schema::drop(config('cart.database.table.coupon'));
     }
 }
