@@ -246,13 +246,20 @@ class Cart
      * @param string $thousandSeperator
      * @return string
      */
-    public function total($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    public function total($allow_format = true, $decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
         $content = $this->getContent();
 
-        $total = $content->reduce(function ($total, CartItem $cartItem) {
-            return $total + ($cartItem->qty * $cartItem->priceTax);
-        }, 0);
+        // $total = $content->reduce(function ($total, CartItem $cartItem) {
+        //     return $total + ($cartItem->qty * $cartItem->priceTax);
+        // }, 0);
+        $total = $this->subtotal(false) + $this->tax(false);
+        if ($this->coupon->is()) {
+            $total = $this->coupon->total($this->subtotal(false)) + $this->tax(false);
+        }
+        if ($allow_format == false) {
+            return $total;
+        }
 
         return $this->numberFormat($total, $decimals, $decimalPoint, $thousandSeperator);
     }
@@ -265,13 +272,16 @@ class Cart
      * @param string $thousandSeperator
      * @return float
      */
-    public function tax($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    public function tax($allow_format = true, $decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
         $content = $this->getContent();
 
         $tax = $content->reduce(function ($tax, CartItem $cartItem) {
             return $tax + ($cartItem->qty * $cartItem->tax);
         }, 0);
+        if ($allow_format == false) {
+            return $tax;
+        }
 
         return $this->numberFormat($tax, $decimals, $decimalPoint, $thousandSeperator);
     }
@@ -305,7 +315,7 @@ class Cart
      */
     public function totalWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
-        $totalWithCoupons = $this->coupon->total(Cart::subtotal(false));
+        $totalWithCoupons = $this->coupon->total($this->subtotal(false));
 		return $this->numberFormat($totalWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
     }
 	
@@ -316,7 +326,7 @@ class Cart
      */
     public function discountWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
-        $discountWithCoupons = $this->coupon->discount(Cart::subtotal(false));
+        $discountWithCoupons = $this->coupon->discount($this->subtotal(false));
 		return $this->numberFormat($discountWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
     }
 	

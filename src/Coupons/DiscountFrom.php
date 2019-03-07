@@ -1,5 +1,5 @@
 <?php
-namespace Khuehm1511\ShoppingCart\Coupons;
+namespace Khuehm1511\Shoppingcart\Coupons;
 
 abstract class DiscountForm
 {

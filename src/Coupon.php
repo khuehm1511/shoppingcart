@@ -110,7 +110,7 @@ class Coupon
         $totalWithCoupons = $total;
         if ($this->is())
 		{
-	        $totalWithCoupons = $this->getContent()->apply($total);
+	        $totalWithCoupons -= $this->getContent()->apply($total);
     	}
 		return $totalWithCoupons;
     }
@@ -125,7 +125,7 @@ class Coupon
         $discountWithCoupons = 0;
 		if ($this->is())
 		{
-			$discountWithCoupons = $this->getContent()->discount;
+			$discountWithCoupons = $this->getContent()->apply($total);
 		}
 		return $discountWithCoupons;
     }
