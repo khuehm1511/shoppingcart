@@ -10,7 +10,6 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Khuehm1511\Shoppingcart\Contracts\Buyable;
 use Khuehm1511\Shoppingcart\Exceptions\UnknownModelException;
 use Khuehm1511\Shoppingcart\Exceptions\InvalidRowIDException;
-use Khuehm1511\Shoppingcart\Coupons\Coupon;
 use Khuehm1511\Shoppingcart\Repositories\RepositoryInterface;
 
 class Cart
@@ -44,15 +43,15 @@ class Cart
      * @var RepositoryInterface
      */
     private $repo;
-    
-	/**
-     * Coupons.
+
+    /**
+     * Coupon for cart store.
      *
-     * @var Collection
+     * @var Coupon::class
      */
-    private $coupons;
-	
-	/**
+    private $coupon;
+
+    /**
      * Cart constructor.
      *
      * @param \Illuminate\Session\SessionManager      $session
@@ -63,6 +62,7 @@ class Cart
 		$this->repo = $repo;
         $this->session = $session;
         $this->events = $events;
+        $this->coupon = new Coupon($session);
         $this->instance(self::DEFAULT_INSTANCE);
     }
 
@@ -222,11 +222,8 @@ class Cart
      */
     public function content()
     {
-        if (is_null($this->session->get($this->instance))) {
-            return new Collection([]);
-        }
+        return $this->getContent();
 
-        return $this->session->get($this->instance);
     }
 
     /**
@@ -287,13 +284,16 @@ class Cart
      * @param string $thousandSeperator
      * @return float
      */
-    public function subtotal($decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    public function subtotal($allow_format = true, $decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
         $content = $this->getContent();
 
         $subTotal = $content->reduce(function ($subTotal, CartItem $cartItem) {
             return $subTotal + ($cartItem->qty * $cartItem->price);
         }, 0);
+        if ($allow_format == false) {
+            return $subTotal;
+        }
 
         return $this->numberFormat($subTotal, $decimals, $decimalPoint, $thousandSeperator);
     }
@@ -305,10 +305,7 @@ class Cart
      */
     public function totalWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
-        $total = $this->subtotal();
-        $totalWithCoupons = $total;
-        $coupon = $this->coupons();
-        $totalWithCoupons -= $coupon->apply($total);
+        $totalWithCoupons = $this->coupon->total(Cart::subtotal(false));
 		return $this->numberFormat($totalWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
     }
 	
@@ -319,60 +316,9 @@ class Cart
      */
     public function discountWithCoupons($decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
-        $total = $this->subtotal();
-        $discountWithCoupons = 0;
-		if ($this->hasCoupon())
-		{
-			$coupon = $this->coupons();
-			$discountWithCoupons = $coupon->apply($total);
-		}
+        $discountWithCoupons = $this->coupon->discount(Cart::subtotal(false));
 		return $this->numberFormat($discountWithCoupons, $decimals, $decimalPoint, $thousandSeperator);
     }
-	
-    /**
-     * Add coupon.
-     *
-     * @param Coupon $coupon
-     */
-    public function addCoupon(Coupon $coupon)
-    {
-        return $this->session->put('coupon', $coupon);
-    }
-    /**
-     * Remove coupon.
-     *
-     * @param Coupon $coupon
-     */
-    public function removeCoupon()
-    {
-        $this->session->remove('coupon');
-    }
-    /**
-     * Get coupons.
-     *
-     * @return Collection
-     */
-    public function coupons()
-    {
-        if (is_null($this->session->get('coupon'))) {
-            return new Collection([]);
-        }
-
-        return $this->session->get('coupon');
-    }
-	
-	/**
-	 * Has coupons.
-	 *
-	 * @return true/false
-	 */
-	public function hasCoupon()
-	{
-		if (is_null($this->session->get('coupon'))) {
-			return false;
-		}
-		return true;
-	}
 	
 	/**
      * Search the cart content for a cart item matching the given search closure.
@@ -444,7 +390,7 @@ class Cart
 			$this->currentInstance(),
 			serialize([
 				'content' => $this->getContent(),
-				'coupon' => $this->coupons()
+				//'coupon' => $this->coupons()
 			])
 		);
 
@@ -478,7 +424,7 @@ class Cart
         $this->events->fire('cart.restored');
 
         $this->session->put($this->instance, $content);
-        $this->session->put('coupon', $storedContent['coupon']);
+        //$this->session->put('coupon', $storedContent['coupon']);
 
         $this->instance($currentInstance);
 		
@@ -573,7 +519,7 @@ class Cart
      * @param $thousandSeperator
      * @return string
      */
-    private function numberFormat($value, $decimals, $decimalPoint, $thousandSeperator)
+    protected function numberFormat($value, $decimals, $decimalPoint, $thousandSeperator)
     {
         if(is_null($decimals)){
             $decimals = is_null(config('cart.format.decimals')) ? 2 : config('cart.format.decimals');

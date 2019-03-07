@@ -1,7 +1,7 @@
 <?php
 namespace Khuehm1511\ShoppingCart\Coupons;
 
-abstract class Coupon
+abstract class DiscountForm
 {
     public $name;
     /**

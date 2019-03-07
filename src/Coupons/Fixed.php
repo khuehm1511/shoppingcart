@@ -1,11 +1,12 @@
 <?php
 namespace Khuehm1511\Shoppingcart\Coupons;
-class Fixed extends Coupon
+
+class Fixed extends DiscountForm
 {
     /**
      * @var float
      */
-    private $discount;
+    public $discount;
     /**
      * PercentCoupon constructor.
      *
@@ -27,6 +28,6 @@ class Fixed extends Coupon
      */
     public function apply($total)
     {
-        return $this->discount;
+        return $total - $this->discount;
     }
 }

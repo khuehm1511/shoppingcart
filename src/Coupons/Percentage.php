@@ -1,12 +1,12 @@
 <?php
 namespace Khuehm1511\Shoppingcart\Coupons;
 
-class Percent extends Coupon
+class Percentage extends DiscountForm
 {
     /**
      * @var float
      */
-    private $percent;
+    public $discount;
     /**
      * PercentCoupon constructor.
      *
@@ -16,7 +16,7 @@ class Percent extends Coupon
     public function __construct($name, $discount)
     {
         parent::__construct($name);
-        $this->percent = $discount;
+        $this->discount = $discount;
     }
     /**
      * Apply coupon to total price.
@@ -27,6 +27,6 @@ class Percent extends Coupon
      */
     public function apply($total)
     {
-        return $total * $this->percent;
+        return ($total * $this->discount)/100;
     }
 }

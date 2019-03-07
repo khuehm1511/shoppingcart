@@ -26,7 +26,14 @@ class ShoppingcartServiceProvider extends ServiceProvider
         $this->app['events']->listen(Logout::class, function () {
             if ($this->app['config']->get('cart.destroy_on_logout')) {
                 $this->app->make(SessionManager::class)->forget('cart');
+                $this->app->make(SessionManager::class)->forget('coupon');
             }
+        });
+
+        $this->app->bind('coupon', function () {
+            return new Coupon(
+                $this->app->make(SessionManager::class)
+            );
         });
 		
 		$this->app->bind('cart', function () {
