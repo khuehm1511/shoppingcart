@@ -3,7 +3,7 @@ namespace Khuehm1511\Shoppingcart\Coupons;
 
 abstract class DiscountForm
 {
-    public $name;
+    public $code;
     /**
      * Coupon constructor.
      *
@@ -11,7 +11,7 @@ abstract class DiscountForm
      */
     public function __construct($name)
     {
-        $this->name = $name;
+        $this->code = $name;
     }
     /**
      * Apply coupon to total price.

@@ -76,7 +76,7 @@ class Coupon
      */
     public function code()
     {
-        $this->content();
+        return $this->getContent()->code;
     }
 	
     /**
