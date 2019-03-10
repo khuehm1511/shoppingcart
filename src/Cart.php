@@ -246,6 +246,25 @@ class Cart
      * @param string $thousandSeperator
      * @return string
      */
+    public function totalWithTax($allow_format = true, $decimals = null, $decimalPoint = null, $thousandSeperator = null)
+    {
+        $content = $this->getContent();
+        $total = $this->subtotal(false) + $this->tax(false);
+        if ($allow_format == false) {
+            return $total;
+        }
+
+        return $this->numberFormat($total, $decimals, $decimalPoint, $thousandSeperator);
+    }
+
+    /**
+     * Get the total price of the items in the cart.
+     *
+     * @param int    $decimals
+     * @param string $decimalPoint
+     * @param string $thousandSeperator
+     * @return string
+     */
     public function total($allow_format = true, $decimals = null, $decimalPoint = null, $thousandSeperator = null)
     {
         $content = $this->getContent();
@@ -253,7 +272,7 @@ class Cart
         // $total = $content->reduce(function ($total, CartItem $cartItem) {
         //     return $total + ($cartItem->qty * $cartItem->priceTax);
         // }, 0);
-        $total = $this->subtotal(false) + $this->tax(false);
+        $total = $this->totalWithTax(false);
         if ($this->coupon->is()) {
             $total = $this->coupon->total($this->subtotal(false)) + $this->tax(false);
         }
