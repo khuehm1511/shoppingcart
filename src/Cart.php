@@ -560,6 +560,27 @@ class Cart
             $thousandSeperator = is_null(config('cart.format.thousand_seperator')) ? ',' : config('cart.format.thousand_seperator');
         }
 
-        return number_format($value, $decimals, $decimalPoint, $thousandSeperator);
+        return $this->priceSymbol(number_format($value, $decimals, $decimalPoint, $thousandSeperator));
     }
+	
+	protected function priceSymbol ($price) {
+		$symbol = is_null(config('cart.currency.unit')) ? 'VNĐ' : config('cart.currency.unit');
+        switch (config('cart.currency.pos')) {
+            case 'left_space':
+                return $symbol . ' ' . $price;
+                break;
+            
+            case 'right':
+                return $price.$symbol;
+                break;
+            
+            case 'right_space':
+                return $price . ' ' . $symbol;
+                break;
+            
+            default:
+                return $symbol.$price;
+                break;
+        }
+	}
 }
